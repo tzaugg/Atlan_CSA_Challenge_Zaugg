@@ -142,5 +142,4 @@ Both scripts utilize Python's logging module to record their operations. Logs ar
 - [Atlan Documentation](https://ask.atlan.com/)
 - [Atlan Developer Portal](https://developer.atlan.com/)
 - [Atlan SDK for Python](https://developer.atlan.com/sdks/python-details/)
-- [Atlan Supported Sources](https://developer.atlan.com/sources/)
 - [AWS Boto3 Documentation](https://boto3.amazonaws.com/v1/documentation/api/latest/index.html)
