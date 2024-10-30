@@ -62,8 +62,8 @@ POSTGRES_CONNECTION_NAME = 'postgres-xx' # Replace 'xx' with your initials or un
 SNOWFLAKE_CONNECTION_NAME = 'snowflake-xx' # Replace 'xx' with your initials or unique identifier
 
 # Admin groups and users for Atlan
-ADMIN_GROUPS = []
-ADMIN_USERS = []
+ADMIN_GROUPS = ['admin_group']
+ADMIN_USERS = ['your_id']
 ```
 
 **Note**: Replace placeholders with your actual configuration values.
