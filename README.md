@@ -76,10 +76,10 @@ This script performs the following tasks:
 1. **Create or Retrieve S3 Connection**: Ensures that an S3 connection exists in Atlan.
 2. **Create or Retrieve Database and Schema**: Sets up a database and schema under the S3 connection.
 3. **Process CSV Files from S3**:
-   - Fetches specified CSV files from the S3 bucket.
-   - Extracts column names and data types using pandas.
-   - Creates Table and Column assets in Atlan based on the CSV files' structure.
-   - Updates Column assets with accurate data types.
+   - Fetches specified CSV files from the S3 bucket using boto3.
+   - Loads the files into a pandas DataFrame to extract column names and data types.
+   - Creates Table and Column assets in Atlan based on the CSV files' structure using pyatlan.
+   - Updates Column assets with accurate data types mapped from the DataFrame.
 
 #### build_table_column_lineage.py
 This script establishes lineage between assets:
