@@ -341,7 +341,7 @@ def extract_and_create_columns(csv_file_key, schema_qualified_name):
                 logging.error(f"Failed to create columns for Table '{table_name}'.")
                 return  # Exit if columns creation failed
 
-        # Step 2: Update each Column with 'data_type' using the provided example
+        # Step 2: Update each Column with 'data_type'
         for col_name in column_names:
             col_data_type = column_type_mapping.get(col_name, 'string')
             logging.info(f"Updating data_type for Column '{col_name}' to '{col_data_type}'.")
