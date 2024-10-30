@@ -103,7 +103,7 @@ def set_table_lineage(source_table: Table, target_table: Table, connection_quali
         # Set additional attributes
         process.description = f"Lineage from {source_table.name} to {target_table.name}"
         # Save the Process entity to establish lineage
-        response = asset.save(process)
+        response = client.save(process)
         if response:
             # Extract the GUID of the created Process
             processes = response.assets_created(asset_type=Process)
@@ -149,7 +149,7 @@ def set_column_lineage(source_column: Column, target_column: Column, parent_proc
         # Set additional attributes
         column_process.description = f"Lineage from {source_column.name} to {target_column.name}"
         # Save the ColumnProcess entity to establish lineage
-        response = asset.save(column_process)
+        response = client.save(column_process)
         if response:
             logging.info(f"Successfully created column lineage from '{source_column.qualified_name}' to '{target_column.qualified_name}'.")
             print(f"Successfully created column lineage from '{source_column.name}' to '{target_column.name}'.")
