@@ -13,9 +13,12 @@ from pyatlan.model.assets import (
     Schema,
     Table,
 )
-from pyatlan.model.enums import AtlanConnectorType
+# UPDATED: Added EntityStatus to use enum values for statuses instead of hardcoding strings
+from pyatlan.model.enums import AtlanConnectorType, EntityStatus
 from pyatlan.model.fluent_search import FluentSearch, CompoundQuery
 from io import StringIO
+# UPDATED: Added 're' module to support regex operations in listing S3 objects
+import re
 import config
 
 # Configure logging
@@ -44,13 +47,14 @@ def get_existing_connection(name):
         search = (
             FluentSearch()
             .where(CompoundQuery.asset_type(Connection))
-            .where(Asset.STATUS.eq("ACTIVE"))
+            # UPDATED: Use EntityStatus.ACTIVE.value instead of hardcoded "ACTIVE"
+            .where(Asset.STATUS.eq(EntityStatus.ACTIVE.value))
             .where(Connection.NAME.eq(name, case_insensitive=True))
             .page_size(1)
         ).to_request()
-        
+
         search_results = client.asset.search(search)
-        
+
         for asset in search_results.current_page():
             if isinstance(asset, Connection) and asset.name.lower() == name.lower():
                 return asset
@@ -73,7 +77,7 @@ def create_s3_connection():
             # Create new connection
             print(f"Creating S3 connection '{config.AWS_CONNECTION_NAME}'...")
             admin_role_guid = RoleCache.get_id_for_name("$admin")
-            connection = Connection.creator(
+            connection = Connection.create(
                 name=config.AWS_CONNECTION_NAME,
                 connector_type=AtlanConnectorType.S3,
                 admin_roles=[admin_role_guid],
@@ -102,14 +106,15 @@ def get_existing_database(name, connection_qualified_name):
         search = (
             FluentSearch()
             .where(CompoundQuery.asset_type(Database))
-            .where(Asset.STATUS.eq("ACTIVE"))
+            # UPDATED: Use EntityStatus.ACTIVE.value instead of hardcoded "ACTIVE"
+            .where(Asset.STATUS.eq(EntityStatus.ACTIVE.value))
             .where(Database.NAME.eq(name, case_insensitive=True))
             .where(Database.CONNECTION_QUALIFIED_NAME.eq(connection_qualified_name))
             .page_size(1)
         ).to_request()
-        
+
         search_results = client.asset.search(search)
-        
+
         for asset in search_results.current_page():
             if isinstance(asset, Database) and asset.name.lower() == name.lower():
                 return asset
@@ -124,7 +129,7 @@ def create_database(connection_qualified_name):
     try:
         database_name = config.DATABASE_NAME  # From config.py
         logging.info(f"Ensuring Database '{database_name}' exists under Connection '{connection_qualified_name}'.")
-        
+
         existing_database = get_existing_database(database_name, connection_qualified_name)
         if existing_database:
             logging.info(f"Found existing Database: {existing_database.qualified_name}")
@@ -132,7 +137,7 @@ def create_database(connection_qualified_name):
         else:
             # Create new Database
             print(f"Creating Database '{database_name}' with connection qualified name '{connection_qualified_name}'...")
-            database = Database.creator(
+            database = Database.create(
                 name=database_name,
                 connection_qualified_name=connection_qualified_name,
             )
@@ -157,14 +162,15 @@ def get_existing_schema(name, database_qualified_name):
         search = (
             FluentSearch()
             .where(CompoundQuery.asset_type(Schema))
-            .where(Asset.STATUS.eq("ACTIVE"))
+            # UPDATED: Use EntityStatus.ACTIVE.value instead of hardcoded "ACTIVE"
+            .where(Asset.STATUS.eq(EntityStatus.ACTIVE.value))
             .where(Schema.NAME.eq(name, case_insensitive=True))
             .where(Schema.DATABASE_QUALIFIED_NAME.eq(database_qualified_name))
             .page_size(1)
         ).to_request()
-        
+
         search_results = client.asset.search(search)
-        
+
         for asset in search_results.current_page():
             if isinstance(asset, Schema) and asset.name.lower() == name.lower():
                 return asset
@@ -179,7 +185,7 @@ def create_schema(database_qualified_name):
     try:
         schema_name = config.SCHEMA_NAME  # From config.py
         logging.info(f"Ensuring Schema '{schema_name}' exists under Database '{database_qualified_name}'.")
-        
+
         existing_schema = get_existing_schema(schema_name, database_qualified_name)
         if existing_schema:
             logging.info(f"Found existing Schema: {existing_schema.qualified_name}")
@@ -187,7 +193,7 @@ def create_schema(database_qualified_name):
         else:
             # Create new Schema
             print(f"Creating Schema '{schema_name}' under Database '{database_qualified_name}'...")
-            schema = Schema.creator(
+            schema = Schema.create(
                 name=schema_name,
                 database_qualified_name=database_qualified_name,
             )
@@ -212,14 +218,15 @@ def get_existing_table(name, schema_qualified_name):
         search = (
             FluentSearch()
             .where(CompoundQuery.asset_type(Table))
-            .where(Asset.STATUS.eq("ACTIVE"))
+            # UPDATED: Use EntityStatus.ACTIVE.value instead of hardcoded "ACTIVE"
+            .where(Asset.STATUS.eq(EntityStatus.ACTIVE.value))
             .where(Table.NAME.eq(name, case_insensitive=True))
             .where(Table.SCHEMA_QUALIFIED_NAME.eq(schema_qualified_name))
             .page_size(1)
         ).to_request()
-        
+
         search_results = client.asset.search(search)
-        
+
         for asset in search_results.current_page():
             if isinstance(asset, Table) and asset.name.lower() == name.lower():
                 return asset
@@ -233,7 +240,7 @@ def create_table(table_name, schema_qualified_name):
     """Create or retrieve an existing Table asset in Atlan."""
     try:
         logging.info(f"Ensuring Table '{table_name}' exists under Schema '{schema_qualified_name}'.")
-        
+
         existing_table = get_existing_table(table_name, schema_qualified_name)
         if existing_table:
             logging.info(f"Found existing Table: {existing_table.qualified_name}")
@@ -241,7 +248,7 @@ def create_table(table_name, schema_qualified_name):
         else:
             # Create new Table
             print(f"Creating Table '{table_name}' under Schema '{schema_qualified_name}'...")
-            table = Table.creator(
+            table = Table.create(
                 name=table_name,
                 schema_qualified_name=schema_qualified_name,
             )
@@ -259,6 +266,80 @@ def create_table(table_name, schema_qualified_name):
         logging.error(f"Error ensuring Table: {e}")
         print(f"Error ensuring Table: {e}")
         raise
+
+# UPDATED: Added function to list S3 objects dynamically using prefix or pattern
+def list_s3_objects():
+    """List S3 objects using prefix or pattern from config."""
+    try:
+        # Using prefix to list objects
+        response = s3_client.list_objects_v2(
+            Bucket=config.S3_BUCKET_NAME,
+            Prefix=config.S3_OBJECT_PREFIX
+        )
+        objects = [obj['Key'] for obj in response.get('Contents', [])]
+
+        # If using regex pattern, filter the list
+        if hasattr(config, 'S3_OBJECT_PATTERN'):
+            pattern = re.compile(config.S3_OBJECT_PATTERN)
+            filtered_objects = [key for key in objects if pattern.match(key)]
+            return filtered_objects
+        else:
+            return objects
+    except Exception as e:
+        logging.error(f"Error listing S3 objects: {e}")
+        print(f"Error listing S3 objects: {e}")
+        raise
+
+# UPDATED: Added function to retrieve existing tables under a specific Schema
+def get_existing_tables(schema_qualified_name):
+    """Retrieve existing Tables under a specific Schema."""
+    try:
+        existing_tables = {}
+        search = (
+            FluentSearch()
+            .where(CompoundQuery.asset_type(Table))
+            .where(Asset.STATUS.eq(EntityStatus.ACTIVE.value))
+            .where(Table.SCHEMA_QUALIFIED_NAME.eq(schema_qualified_name))
+            .include_on_results(Asset.NAME)  # Include name
+            .include_on_results(Asset.QUALIFIED_NAME)  # Include qualified_name
+            .page_size(1000)  # Adjust page size if necessary
+        ).to_request()
+
+        search_results = client.asset.search(search)
+
+        for asset in search_results:
+            if isinstance(asset, Table):
+                existing_tables[asset.name] = asset
+        return existing_tables
+    except Exception as e:
+        logging.error(f"Error retrieving existing tables: {e}")
+        print(f"Error retrieving existing tables: {e}")
+        raise
+
+# UPDATED: Added function to delete tables that are no longer present in S3
+def delete_tables(tables):
+    """Mark specified Tables as DELETED in Atlan."""
+    try:
+        if not tables:
+            return
+        for table in tables:
+            print(f"Marking table '{table.name}' as DELETED.")
+            logging.info(f"Marking table '{table.name}' as DELETED.")
+            table.status = EntityStatus.DELETED.value
+        response = client.asset.save(tables)
+        if response:
+            print(f"Marked {len(tables)} tables as DELETED.")
+            logging.info(f"Marked {len(tables)} tables as DELETED.")
+    except Exception as e:
+        logging.error(f"Error deleting tables: {e}")
+        print(f"Error deleting tables: {e}")
+        raise
+
+# UPDATED: Added function to generate consistent table names from CSV file keys
+def generate_table_name(csv_file_key):
+    """Generate a consistent table name from the CSV file key."""
+    table_name = csv_file_key.replace('/', '_').replace('.csv', '').lower()
+    return table_name
 
 def extract_and_create_columns(csv_file_key, schema_qualified_name):
     """Extract schema from S3 CSV file and create Table and Column assets in Atlan."""
@@ -309,7 +390,8 @@ def extract_and_create_columns(csv_file_key, schema_qualified_name):
             column_type_mapping[col_name] = atlan_type
 
         # Create or retrieve Table asset
-        table_name = csv_file_key.replace('/', '_').replace('.csv', '')  # Adjust table name as needed
+        # UPDATED: Use generate_table_name to ensure consistent table naming
+        table_name = generate_table_name(csv_file_key)
         table_asset = create_table(table_name, schema_qualified_name)
         if not table_asset:
             print(f"Failed to create or retrieve Table '{table_name}'. Skipping columns creation.")
@@ -321,8 +403,7 @@ def extract_and_create_columns(csv_file_key, schema_qualified_name):
         for idx, col_name in enumerate(column_names, start=1):
             logging.info(f"Creating Column '{col_name}' (order {idx}) under Table '{table_name}'.")
             print(f"Creating Column '{col_name}' (order {idx}) under Table '{table_name}'...")
-
-            column = Column.creator(
+            column = Column.create(
                 name=col_name,
                 parent_qualified_name=table_asset.qualified_name,
                 parent_type=Table,
@@ -357,17 +438,21 @@ def extract_and_create_columns(csv_file_key, schema_qualified_name):
                     logging.info(f"Retrieved Column '{column.name}' with current data type '{column.data_type}'.")
                     print(f"Retrieved Column '{column.name}' with current data type '{column.data_type}'.")
 
-                    # Update the data_type
-                    column.data_type = col_data_type
+                    # UPDATED: Only update the data_type if it has changed
+                    if column.data_type != col_data_type:
+                        column.data_type = col_data_type
 
-                    # Save the updated column
-                    update_response = client.asset.save(column)
-                    if update_response:
-                        print(f"Updated Column '{col_name}' with data_type '{col_data_type}'.")
-                        logging.info(f"Updated Column '{col_name}' with data_type '{col_data_type}'.")
+                        # Save the updated column
+                        update_response = client.asset.save(column)
+                        if update_response:
+                            print(f"Updated Column '{col_name}' with data_type '{col_data_type}'.")
+                            logging.info(f"Updated Column '{col_name}' with data_type '{col_data_type}'.")
+                        else:
+                            print(f"Failed to update data_type for Column '{col_name}'.")
+                            logging.error(f"Failed to update data_type for Column '{col_name}'.")
                     else:
-                        print(f"Failed to update data_type for Column '{col_name}'.")
-                        logging.error(f"Failed to update data_type for Column '{col_name}'.")
+                        print(f"Column '{col_name}' already has data_type '{col_data_type}'. Skipping update.")
+                        logging.info(f"Column '{col_name}' already has data_type '{col_data_type}'. Skipping update.")
                 else:
                     print(f"Column with qualified name '{column_qualified_name}' not found.")
                     logging.error(f"Column with qualified name '{column_qualified_name}' not found.")
@@ -403,14 +488,27 @@ def main():
             logging.error("Failed to create or retrieve Schema.")
             return
 
-        # List CSV files from S3 bucket
-        csv_files = config.S3_OBJECT_NAMES  # From config.py
+        # UPDATED: List CSV files from S3 bucket using dynamic listing
+        csv_files = list_s3_objects()
         if not csv_files:
-            print(f"No CSV files specified in 'S3_OBJECT_NAMES'.")
-            logging.warning(f"No CSV files specified in 'S3_OBJECT_NAMES'.")
+            print(f"No CSV files found in bucket '{config.S3_BUCKET_NAME}' matching the pattern.")
+            logging.warning(f"No CSV files found in bucket '{config.S3_BUCKET_NAME}' matching the pattern.")
             return
 
-        # Process all CSV files
+        # UPDATED: Generate the current set of table names from S3
+        s3_table_names = set(generate_table_name(key) for key in csv_files)
+
+        # UPDATED: Fetch existing tables from Atlan
+        existing_tables = get_existing_tables(schema_asset.qualified_name)
+
+        # UPDATED: Identify tables to delete (present in Atlan but not in S3)
+        tables_to_delete = [table for name, table in existing_tables.items() if name not in s3_table_names]
+
+        # UPDATED: Delete obsolete tables
+        if tables_to_delete:
+            delete_tables(tables_to_delete)
+
+        # Process current CSV files
         for csv_file_key in csv_files:
             extract_and_create_columns(csv_file_key, schema_asset.qualified_name)
 
