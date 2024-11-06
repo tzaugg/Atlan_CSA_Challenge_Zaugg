@@ -48,18 +48,15 @@ LOG_LEVEL = "INFO"
 
 # S3 configuration
 S3_BUCKET_NAME = "atlan-tech-challenge"
-S3_OBJECT_NAMES = [
-    "path/to/your/csv1.csv",
-    "path/to/your/csv2.csv",
-    # Add more CSV file paths as needed
-]
+S3_OBJECT_PREFIX = ""  # Empty since the files are at the root of the bucket
+S3_OBJECT_PATTERN = r"^[^/]+\.csv$"  # Matches CSV files at the root level only
 
 # Connection and asset names
 AWS_CONNECTION_NAME = "aws-s3-connection-xx"  # Replace 'xx' with your initials or unique identifier
-DATABASE_NAME = "your_database_name"
-SCHEMA_NAME = "your_schema_name"
 POSTGRES_CONNECTION_NAME = 'postgres-xx' # Replace 'xx' with your initials or unique identifier
 SNOWFLAKE_CONNECTION_NAME = 'snowflake-xx' # Replace 'xx' with your initials or unique identifier
+DATABASE_NAME = "your_database_name"
+SCHEMA_NAME = "your_schema_name"
 
 # Admin groups and users for Atlan
 ADMIN_GROUPS = ['admin_group']
