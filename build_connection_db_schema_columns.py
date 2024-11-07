@@ -338,7 +338,8 @@ def delete_tables(tables):
 # UPDATED: Added function to generate consistent table names from CSV file keys
 def generate_table_name(csv_file_key):
     """Generate a consistent table name from the CSV file key."""
-    table_name = csv_file_key.replace('/', '_').replace('.csv', '').lower()
+    #table_name = csv_file_key.replace('/', '_').replace('.csv', '').lower()  Keep table cases from S3
+    table_name = csv_file_key.replace('/', '_').replace('.csv', '')
     return table_name
 
 def extract_and_create_columns(csv_file_key, schema_qualified_name):
